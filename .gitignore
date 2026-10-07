@@ -1,0 +1,17 @@
+node_modules
+dist
+.vercel
+.output
+.nitro
+*.log
+.DS_Store
+screenshots
+artifacts
+.project_id
+.node_modules.lock
+.grok/preview.pid
+.grok/preview.log
+.grok/og-pending
+.grok/status
+.grok/skills
+.grok/references
