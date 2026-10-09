@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
+  Circle,
   CircleMarker,
   MapContainer,
   TileLayer,
@@ -15,12 +16,15 @@ function MapEffects({
   parks,
   selected,
   userLocation,
+  centerOnUserKey,
 }: {
   parks: Park[];
   selected: Park | undefined;
   userLocation: { lat: number; lng: number } | null;
+  centerOnUserKey?: number;
 }) {
   const map = useMap();
+  const lastUserCenterKey = useRef(0);
   const key = parks.map((p) => p.id).join(",");
 
   useEffect(() => {
@@ -31,10 +35,7 @@ function MapEffects({
 
   useEffect(() => {
     if (selected || parks.length === 0) return;
-    if (userLocation) {
-      map.flyTo([userLocation.lat, userLocation.lng], 13, { duration: 0.6 });
-      return;
-    }
+    if (userLocation) return;
     if (parks.length === 1) {
       map.flyTo([parks[0].lat, parks[0].lng], 13, { duration: 0.6 });
       return;
@@ -42,6 +43,17 @@ function MapEffects({
     const bounds = parks.map((p) => [p.lat, p.lng] as [number, number]);
     map.fitBounds(bounds, { padding: [36, 36], maxZoom: 13 });
   }, [key, selected, userLocation, map, parks]);
+
+  useEffect(() => {
+    if (
+      userLocation &&
+      centerOnUserKey &&
+      centerOnUserKey !== lastUserCenterKey.current
+    ) {
+      map.flyTo([userLocation.lat, userLocation.lng], 13, { duration: 0.6 });
+      lastUserCenterKey.current = centerOnUserKey;
+    }
+  }, [centerOnUserKey, map, userLocation]);
 
   return null;
 }
@@ -51,6 +63,8 @@ export function ParkMapInner({
   selectedId,
   onSelect,
   userLocation,
+  locationAccuracy,
+  centerOnUserKey,
 }: ParkMapProps) {
   const selected = parks.find((p) => p.id === selectedId);
 
@@ -75,7 +89,15 @@ export function ParkMapInner({
         parks={parks}
         selected={selected}
         userLocation={userLocation}
+        centerOnUserKey={centerOnUserKey}
       />
+      {userLocation && locationAccuracy != null && (
+        <Circle
+          center={[userLocation.lat, userLocation.lng]}
+          radius={locationAccuracy}
+          pathOptions={{ color: "#c9d0c4", fillColor: "#c9d0c4", fillOpacity: 0.08, weight: 1 }}
+        />
+      )}
       {userLocation && (
         <CircleMarker
           center={[userLocation.lat, userLocation.lng]}

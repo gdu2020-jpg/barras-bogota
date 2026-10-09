@@ -34,7 +34,13 @@ const EQUIPMENT: EquipmentId[] = [
   "jaula",
 ];
 
-export function FiltersBar({ onLocate }: { onLocate: () => void }) {
+export function FiltersBar({
+  onLocate,
+  locating = false,
+}: {
+  onLocate: () => void;
+  locating?: boolean;
+}) {
   const filters = useAppStore((s) => s.filters);
   const setFilters = useAppStore((s) => s.setFilters);
   const resetFilters = useAppStore((s) => s.resetFilters);
@@ -68,10 +74,11 @@ export function FiltersBar({ onLocate }: { onLocate: () => void }) {
           variant={hasLocation ? "default" : "secondary"}
           size="icon"
           className="shrink-0"
-          aria-label="Usar mi ubicación"
+          aria-label={locating ? "Buscando ubicación" : "Usar mi ubicación"}
+          disabled={locating}
           onClick={onLocate}
         >
-          <LocateFixed className="size-4" />
+          <LocateFixed className={cn("size-4", locating && "animate-pulse")} />
         </Button>
       </div>
 
