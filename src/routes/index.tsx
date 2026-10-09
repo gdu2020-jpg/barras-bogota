@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { List, Map as MapIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { FiltersBar } from "@/components/filters-bar";
 import { ParkCard } from "@/components/park-card";
 import { ParkMap } from "@/components/park-map";
+import { TrainingRecommender } from "@/components/training-recommender";
 import { Button } from "@/components/ui/button";
 import { listCommunityStations } from "@/lib/community";
 import { distanceLabel, filterParks } from "@/lib/filter-parks";
@@ -32,8 +33,17 @@ function Home() {
   const setSelectedId = useAppStore((s) => s.setSelectedId);
   const userLocation = useAppStore((s) => s.userLocation);
   const setUserLocation = useAppStore((s) => s.setUserLocation);
+  const setSort = useAppStore((s) => s.setSort);
   const [view, setView] = useState<"split" | "map" | "list">("split");
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
+  const [centerOnUserKey, setCenterOnUserKey] = useState(0);
+  const watchId = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (watchId.current !== null) navigator.geolocation?.clearWatch(watchId.current);
+  }, []);
 
   const catalog = useMemo(() => {
     const seen = new Set(PARKS.map((p) => p.id));
@@ -50,16 +60,34 @@ function Home() {
       setGeoError("Este navegador no comparte ubicación.");
       return;
     }
-    navigator.geolocation.getCurrentPosition(
+    setLocating(true);
+    setGeoError(null);
+    setSort("distancia");
+    setSelectedId(null);
+    setCenterOnUserKey((current) => current + 1);
+    if (watchId.current !== null) {
+      setLocating(false);
+      return;
+    }
+    watchId.current = navigator.geolocation.watchPosition(
       (pos) => {
         setUserLocation({
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
         });
+        setLocationAccuracy(pos.coords.accuracy);
+        setLocating(false);
         setGeoError(null);
       },
-      () => setGeoError("No se pudo leer la ubicación. Ordena por índice."),
-      { enableHighAccuracy: true, timeout: 8000 },
+      (error) => {
+        setLocating(false);
+        setGeoError(error.code === GeolocationPositionError.PERMISSION_DENIED
+          ? "Permiso de ubicación denegado. Puedes seguir explorando el mapa."
+          : "No se pudo leer la ubicación. Revisa el permiso e inténtalo de nuevo.");
+        if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current);
+        watchId.current = null;
+      },
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 },
     );
   };
 
@@ -80,8 +108,16 @@ function Home() {
                 Bogotá y del país.
               </p>
             </div>
-            <FiltersBar onLocate={locate} />
+            <FiltersBar onLocate={locate} locating={locating} />
             {geoError && <p className="text-xs text-warn">{geoError}</p>}
+            <TrainingRecommender
+              parks={parks}
+              location={userLocation}
+              onSelect={(park) => {
+                setSelectedId(park.id);
+                setView("map");
+              }}
+            />
             <div className="flex items-center justify-between">
               <p className="text-xs text-subtle">{parks.length} resultados</p>
               <div className="flex rounded-md border border-border p-0.5 lg:hidden">
@@ -144,6 +180,8 @@ function Home() {
             parks={parks}
             selectedId={selectedId}
             userLocation={userLocation}
+            locationAccuracy={locationAccuracy}
+            centerOnUserKey={centerOnUserKey}
             onSelect={(id) => setSelectedId(id)}
           />
         </section>
