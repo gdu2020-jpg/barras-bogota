@@ -5,4 +5,6 @@ export interface ParkMapProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   userLocation: { lat: number; lng: number } | null;
+  locationAccuracy?: number | null;
+  centerOnUserKey?: number;
 }
