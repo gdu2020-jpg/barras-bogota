@@ -1,5 +1,5 @@
-import { haversineKm } from "@/lib/geo";
-import type { EquipmentId, Park } from "@/lib/parks";
+import { haversineKm } from "./geo.ts";
+import type { EquipmentId, Park } from "./parks.ts";
 
 interface GoalProfile {
   id: string;
