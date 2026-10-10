@@ -32,7 +32,7 @@ jobs:
       - name: Verificar tipos
         run: npm run typecheck
 
-      - name: Ejecutar pruebas
+      - name: Pruebas del producto y utilidades públicas
         run: npm test
 
       - name: Compilar aplicación
