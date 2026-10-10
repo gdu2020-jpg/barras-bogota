@@ -59,8 +59,8 @@ export function FiltersBar({
     !filters.onlyRealBars;
   const locationLabel = locating
     ? "Buscando tu ubicación"
-    : watching && hasLocation
-      ? "Centrar el mapa en mi ubicación"
+    : watching
+      ? "Detener seguimiento de ubicación"
       : hasLocation
         ? "Actualizar mi ubicación"
         : "Cerca de mí";
