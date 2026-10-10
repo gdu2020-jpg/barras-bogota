@@ -1,19 +1,64 @@
 import { haversineKm } from "@/lib/geo";
 import type { EquipmentId, Park } from "@/lib/parks";
 
-export const TRAINING_GOALS = [
-  { id: "fuerza", label: "Fuerza", terms: ["fuerza", "pesas", "volumen", "barras", "hiit"] },
-  { id: "dominadas", label: "Dominadas", terms: ["dominadas", "barras", "street workout"] },
-  { id: "fondos", label: "Fondos y empuje", terms: ["paralelas", "fondos", "empuje"] },
-  { id: "skills", label: "Skills", terms: ["skills", "muscle-up", "anillas"] },
-  { id: "piernas", label: "Piernas y acondicionamiento", terms: ["pierna", "hiit", "full body", "volumen"] },
-  { id: "inicio", label: "Empezar", terms: ["principiantes", "principiante", "barrio"] },
-] as const;
+interface GoalProfile {
+  id: string;
+  label: string;
+  tags: string[];
+  equipment: EquipmentId[];
+  level?: "inicio";
+}
 
-export type TrainingGoal = (typeof TRAINING_GOALS)[number]["id"];
+const GOAL_PROFILES = [
+  {
+    id: "fuerza",
+    label: "Fuerza",
+    tags: ["fuerza", "pesas", "volumen", "barras", "hiit"],
+    equipment: ["pesas", "jaula", "barras-altas", "paralelas"],
+  },
+  {
+    id: "dominadas",
+    label: "Dominadas",
+    tags: ["dominadas", "barras", "muscle-up", "street workout"],
+    equipment: ["barras-altas", "barras-medias", "espaldera"],
+  },
+  {
+    id: "fondos",
+    label: "Fondos y empuje",
+    tags: ["paralelas", "fondos", "empuje", "street workout"],
+    equipment: ["paralelas", "dips", "barras-bajas"],
+  },
+  {
+    id: "skills",
+    label: "Skills",
+    tags: ["skills", "muscle-up", "anillas", "comunidad"],
+    equipment: ["anillas", "barras-altas", "paralelas"],
+  },
+  {
+    id: "piernas",
+    label: "Piernas y acondicionamiento",
+    tags: ["pierna", "hiit", "full body", "volumen"],
+    equipment: ["jaula", "pesas", "maquinas", "bancos"],
+  },
+  {
+    id: "inicio",
+    label: "Empezar",
+    tags: ["principiante", "principiantes", "barrio", "movilidad"],
+    equipment: ["barras-altas", "paralelas", "bancos"],
+    level: "inicio",
+  },
+] satisfies GoalProfile[];
+
+export const TRAINING_GOALS = GOAL_PROFILES.map(({ id, label }) => ({ id, label }));
+export type TrainingGoal = (typeof GOAL_PROFILES)[number]["id"];
 
 export const TRAINING_EQUIPMENT: EquipmentId[] = [
-  "barras-altas", "paralelas", "anillas", "espaldera", "pesas", "jaula",
+  "barras-altas",
+  "paralelas",
+  "anillas",
+  "espaldera",
+  "pesas",
+  "jaula",
 ];
 
 export interface Recommendation {
@@ -23,33 +68,68 @@ export interface Recommendation {
   reasons: string[];
 }
 
+function normalize(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("es")
+    .trim();
+}
+
+function goalFit(profile: GoalProfile, park: Park): { points: number; reason: string } {
+  const tags = park.bestFor.map(normalize);
+  const matchedTags = profile.tags.filter((term) =>
+    tags.some((tag) => tag.includes(normalize(term))),
+  );
+  const equipmentMatches = profile.equipment.filter((item) => park.equipment.includes(item));
+  const tagPoints = matchedTags.length ? Math.min(28, 18 + (matchedTags.length - 1) * 5) : 0;
+  const equipmentPoints = (equipmentMatches.length / profile.equipment.length) * 12;
+  const beginnerPoints = profile.level === "inicio"
+    ? (park.level === "inicio" ? 5 : park.level === "todos" ? 3 : 0) + (park.safety === "alta" ? 2 : 0)
+    : 0;
+  const points = Math.min(45, tagPoints + equipmentPoints + beginnerPoints);
+
+  if (matchedTags.length) {
+    return { points, reason: `Ideal para ${profile.label.toLocaleLowerCase("es")}` };
+  }
+  if (equipmentMatches.length) {
+    return { points, reason: `Equipo útil para ${profile.label.toLocaleLowerCase("es")}` };
+  }
+  return { points, reason: "Buena opción por calidad general" };
+}
+
+/** Ranks parks by training fit, verified equipment, quality, and optional proximity. */
 export function recommendParks(
   parks: Park[],
   goal: TrainingGoal,
   requiredEquipment: EquipmentId[],
   location: { lat: number; lng: number } | null,
 ): Recommendation[] {
-  const selectedGoal = TRAINING_GOALS.find((item) => item.id === goal);
-  if (!selectedGoal) return [];
+  const profile = GOAL_PROFILES.find((item) => item.id === goal);
+  if (!profile) return [];
 
   return parks
     .filter((park) => requiredEquipment.every((item) => park.equipment.includes(item)))
     .map((park) => {
-      const tags = park.bestFor.join(" ").toLocaleLowerCase("es");
-      const goalMatch = selectedGoal.terms.some((term) => tags.includes(term));
+      const { points: goalPoints, reason: goalReason } = goalFit(profile, park);
+      const qualityPoints = (park.score / 10) * 25;
       const distanceKm = location
         ? haversineKm(location.lat, location.lng, park.lat, park.lng)
         : undefined;
-      const distanceScore = distanceKm === undefined ? 0 : Math.max(0, 10 - distanceKm / 2);
-      const score = Math.round(
-        (goalMatch ? 50 : 25) + park.score * 3 +
-        (requiredEquipment.length ? 15 : 0) + (distanceKm === undefined ? 0 : distanceScore),
-      );
-      const reasons = [goalMatch ? `Recomendado para ${selectedGoal.label.toLowerCase()}` : `Estación completa para ${selectedGoal.label.toLowerCase()}`];
+      // Distance helps break ties, without making a low-quality nearby park win by default.
+      const proximityPoints = distanceKm === undefined ? 0 : 20 * Math.exp(-distanceKm / 8);
+      const score = Math.round(goalPoints + qualityPoints + proximityPoints);
+      const reasons = [goalReason];
+
       if (requiredEquipment.length) reasons.push("Tiene todo el equipo que pediste");
       if (distanceKm !== undefined) reasons.push(`${distanceKm.toFixed(1)} km de ti`);
+
       return { park, score, distanceKm, reasons };
     })
-    .sort((a, b) => b.score - a.score || b.park.score - a.park.score)
+    .sort((a, b) =>
+      b.score - a.score ||
+      (a.distanceKm ?? Number.POSITIVE_INFINITY) - (b.distanceKm ?? Number.POSITIVE_INFINITY) ||
+      b.park.score - a.park.score,
+    )
     .slice(0, 3);
 }
