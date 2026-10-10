@@ -94,7 +94,7 @@ function Home() {
         setLocating(false);
         setGeoError(null);
         setLocationMessage(
-          `Ubicación actualizada » precisión aproximada ${Math.round(pos.coords.accuracy)} m.`,
+          `Ubicación actualizada · precisión aproximada ${Math.round(pos.coords.accuracy)} m.`,
         );
         if (!receivedFirstFix.current) {
           receivedFirstFix.current = true;
@@ -114,7 +114,7 @@ function Home() {
           );
         } else if (error.code === 3) {
           setGeoError(
-            "El GPS tardó demasiado. Comprueba la señal y vuelve a pulsar ©Cerca de mí.",
+            "El GPS tardó demasiado. Comprueba la señal y vuelve a pulsar «Cerca de mí».",
           );
         } else {
           setGeoError(
