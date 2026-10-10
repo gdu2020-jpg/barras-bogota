@@ -9,6 +9,7 @@ import { TrainingRecommender } from "@/components/training-recommender";
 import { Button } from "@/components/ui/button";
 import { listCommunityStations } from "@/lib/community";
 import { distanceLabel, filterParks } from "@/lib/filter-parks";
+import { geolocationErrorMessage, stopGeolocationWatch } from "@/lib/geolocation";
 import { PARKS } from "@/lib/parks";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -46,9 +47,7 @@ function Home() {
 
   useEffect(
     () => () => {
-      if (watchId.current !== null) {
-        navigator.geolocation?.clearWatch(watchId.current);
-      }
+      stopGeolocationWatch(navigator.geolocation, watchId.current);
     },
     [],
   );
@@ -71,9 +70,12 @@ function Home() {
       setLocationMessage(null);
       return;
     }
-    if (watchId.current !== null) {
-      if (userLocation) setCenterOnUserKey((current) => current + 1);
+      if (watchId.current !== null) {
+      stopGeolocationWatch(navigator.geolocation, watchId.current);
+      watchId.current = null;
+      setWatchingLocation(false);
       setGeoError(null);
+      setLocationMessage("Seguimiento detenido. Tu ubicación solo permanece en esta página.");
       return;
     }
 
@@ -108,20 +110,8 @@ function Home() {
         setLocationAccuracy(null);
         setSort("indice");
         setLocationMessage(null);
-        if (error.code === 1) {
-          setGeoError(
-            "Permiso de ubicación denegado. Actívalo en los permisos del navegador y vuelve a intentarlo; el mapa sigue disponible.",
-          );
-        } else if (error.code === 3) {
-          setGeoError(
-            "El GPS tardó demasiado. Comprueba la señal y vuelve a pulsar «Cerca de mí».",
-          );
-        } else {
-          setGeoError(
-            "No fue posible obtener la ubicación. Comprueba el GPS y vuelve a intentarlo.",
-          );
-        }
-        if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current);
+        setGeoError(geolocationErrorMessage(error.code));
+        stopGeolocationWatch(navigator.geolocation, watchId.current);
         watchId.current = null;
       },
       {
