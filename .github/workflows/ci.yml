@@ -36,4 +36,5 @@ jobs:
         run: npm test
 
       - name: Compilar aplicación
+        if: always()
         run: npm run build
