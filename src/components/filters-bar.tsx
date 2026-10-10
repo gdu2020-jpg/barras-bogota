@@ -1,4 +1,4 @@
-import { LocateFixed, Search, X } from "lucide-react";
+import { LocateFixed, LoaderCircle, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -37,9 +37,11 @@ const EQUIPMENT: EquipmentId[] = [
 export function FiltersBar({
   onLocate,
   locating = false,
+  watching = false,
 }: {
   onLocate: () => void;
   locating?: boolean;
+  watching?: boolean;
 }) {
   const filters = useAppStore((s) => s.filters);
   const setFilters = useAppStore((s) => s.setFilters);
@@ -55,6 +57,13 @@ export function FiltersBar({
     filters.kind !== "todas" ||
     filters.equipment !== "todas" ||
     !filters.onlyRealBars;
+  const locationLabel = locating
+    ? "Buscando tu ubicación"
+    : watching && hasLocation
+      ? "Centrar el mapa en mi ubicación"
+      : hasLocation
+        ? "Actualizar mi ubicación"
+        : "Cerca de mí";
 
   return (
     <div className="max-w-full space-y-3 overflow-hidden">
@@ -74,11 +83,17 @@ export function FiltersBar({
           variant={hasLocation ? "default" : "secondary"}
           size="icon"
           className="shrink-0"
-          aria-label={locating ? "Buscando ubicación" : "Usar mi ubicación"}
+          aria-label={locationLabel}
+          title={locating ? "Buscando tu ubicación…" : locationLabel}
+          aria-busy={locating}
           disabled={locating}
           onClick={onLocate}
         >
-          <LocateFixed className={cn("size-4", locating && "animate-pulse")} />
+          {locating ? (
+            <LoaderCircle className="size-4 animate-spin" />
+          ) : (
+            <LocateFixed className={cn("size-4", hasLocation && "text-accent-fg")} />
+          )}
         </Button>
       </div>
 
@@ -202,3 +217,4 @@ function Chip({
     </button>
   );
 }
+
