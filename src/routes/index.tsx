@@ -37,13 +37,21 @@ function Home() {
   const [view, setView] = useState<"split" | "map" | "list">("split");
   const [geoError, setGeoError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
+  const [watchingLocation, setWatchingLocation] = useState(false);
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
+  const [locationMessage, setLocationMessage] = useState<string | null>(null);
   const [centerOnUserKey, setCenterOnUserKey] = useState(0);
   const watchId = useRef<number | null>(null);
+  const receivedFirstFix = useRef(false);
 
-  useEffect(() => () => {
-    if (watchId.current !== null) navigator.geolocation?.clearWatch(watchId.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (watchId.current !== null) {
+        navigator.geolocation?.clearWatch(watchId.current);
+      }
+    },
+    [],
+  );
 
   const catalog = useMemo(() => {
     const seen = new Set(PARKS.map((p) => p.id));
@@ -57,18 +65,25 @@ function Home() {
 
   const locate = () => {
     if (!navigator.geolocation) {
-      setGeoError("Este navegador no comparte ubicación.");
+      setGeoError(
+        "Este navegador no ofrece geolocalización. Puedes seguir explorando el mapa.",
+      );
+      setLocationMessage(null);
       return;
     }
+    if (watchId.current !== null) {
+      if (userLocation) setCenterOnUserKey((current) => current + 1);
+      setGeoError(null);
+      return;
+    }
+
     setLocating(true);
+    setWatchingLocation(true);
     setGeoError(null);
+    setLocationMessage("Buscando una ubicación GPS precisa…");
     setSort("distancia");
     setSelectedId(null);
-    setCenterOnUserKey((current) => current + 1);
-    if (watchId.current !== null) {
-      setLocating(false);
-      return;
-    }
+    receivedFirstFix.current = false;
     watchId.current = navigator.geolocation.watchPosition(
       (pos) => {
         setUserLocation({
@@ -78,16 +93,42 @@ function Home() {
         setLocationAccuracy(pos.coords.accuracy);
         setLocating(false);
         setGeoError(null);
+        setLocationMessage(
+          `Ubicación actualizada » precisión aproximada ${Math.round(pos.coords.accuracy)} m.`,
+        );
+        if (!receivedFirstFix.current) {
+          receivedFirstFix.current = true;
+          setCenterOnUserKey((current) => current + 1);
+        }
       },
       (error) => {
         setLocating(false);
-        setGeoError(error.code === GeolocationPositionError.PERMISSION_DENIED
-          ? "Permiso de ubicación denegado. Puedes seguir explorando el mapa."
-          : "No se pudo leer la ubicación. Revisa el permiso e inténtalo de nuevo.");
+        setWatchingLocation(false);
+        setUserLocation(null);
+        setLocationAccuracy(null);
+        setSort("indice");
+        setLocationMessage(null);
+        if (error.code === 1) {
+          setGeoError(
+            "Permiso de ubicación denegado. Actívalo en los permisos del navegador y vuelve a intentarlo; el mapa sigue disponible.",
+          );
+        } else if (error.code === 3) {
+          setGeoError(
+            "El GPS tardó demasiado. Comprueba la señal y vuelve a pulsar ©Cerca de mí.",
+          );
+        } else {
+          setGeoError(
+            "No fue posible obtener la ubicación. Comprueba el GPS y vuelve a intentarlo.",
+          );
+        }
         if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current);
         watchId.current = null;
       },
-      { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 20000,
+      },
     );
   };
 
@@ -108,8 +149,21 @@ function Home() {
                 Bogotá y del país.
               </p>
             </div>
-            <FiltersBar onLocate={locate} locating={locating} />
-            {geoError && <p className="text-xs text-warn">{geoError}</p>}
+            <FiltersBar
+              onLocate={locate}
+              locating={locating}
+              watching={watchingLocation}
+            />
+            {geoError && (
+              <p className="text-xs text-warn" role="alert">
+                {geoError}
+              </p>
+            )}
+            {locationMessage && (
+              <p className="text-xs text-subtle" role="status" aria-live="off">
+                {locationMessage}
+              </p>
+            )}
             <TrainingRecommender
               parks={parks}
               location={userLocation}
