@@ -50,8 +50,13 @@ function MapEffects({
       centerOnUserKey &&
       centerOnUserKey !== lastUserCenterKey.current
     ) {
-      map.flyTo([userLocation.lat, userLocation.lng], 13, { duration: 0.6 });
       lastUserCenterKey.current = centerOnUserKey;
+      const distanceFromCenter = map
+        .getCenter()
+        .distanceTo([userLocation.lat, userLocation.lng]);
+      if (distanceFromCenter > 10 || map.getZoom() < 13) {
+        map.flyTo([userLocation.lat, userLocation.lng], 13, { duration: 0.6 });
+      }
     }
   }, [centerOnUserKey, map, userLocation]);
 
@@ -95,7 +100,12 @@ export function ParkMapInner({
         <Circle
           center={[userLocation.lat, userLocation.lng]}
           radius={locationAccuracy}
-          pathOptions={{ color: "#c9d0c4", fillColor: "#c9d0c4", fillOpacity: 0.08, weight: 1 }}
+          pathOptions={{
+            color: "#c9d0c4",
+            fillColor: "#c9d0c4",
+            fillOpacity: 0.08,
+            weight: 1,
+          }}
         />
       )}
       {userLocation && (

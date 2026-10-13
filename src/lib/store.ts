@@ -37,6 +37,10 @@ const defaultFilters: Filters = {
   onlyRealBars: true,
 };
 
+export function persistedAppState(state: AppState): Pick<AppState, "favorites"> {
+  return { favorites: state.favorites };
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -61,7 +65,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "barras-bogota",
-      partialize: (s) => ({ favorites: s.favorites }),
+      partialize: persistedAppState,
     },
   ),
 );
