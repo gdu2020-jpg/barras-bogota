@@ -23,16 +23,18 @@ Lee [CONTRIBUTING.md](CONTRIBUTING.md). El camino más útil:
 
 ## Desarrollo
 
-```bash
-npm install
-npm run dev
-```
+    npm install
+    npm run dev
 
 Stack: React 19, TanStack Start, Tailwind v4, Leaflet, Postgres (Neon en deploy, PGLite en local).
 
-- Catálogo curado: `src/lib/parks.ts`
-- Aportes: `src/lib/community.ts` + `migrations/0002_stations.sql`
-- UI: `src/routes/` y `src/components/`
+- Catálogo curado: src/lib/parks.ts
+- Aportes: src/lib/community.ts + migrations/0002_stations.sql
+- UI: src/routes/ y src/components/
+
+## Despliegue de prueba
+
+La [guía de Vercel](docs/deployment-vercel.md) explica el despliegue de Preview, las variables opcionales, la base de datos y las comprobaciones para el teléfono.
 
 ## Licencia
 
