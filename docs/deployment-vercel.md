@@ -41,3 +41,8 @@ No publiques DATABASE_URL, GROK_AUTH_CLIENT_SECRET, BETTER_AUTH_SECRET ni tokens
 Abre el enlace HTTPS de Vercel. Revisa catálogo, filtros, recomendador, mapa, permitir/denegar GPS, error GPS y detener seguimiento. La ubicación solo vive en memoria; el estado persistente del navegador guarda únicamente favoritos. Build correcto no verifica la interacción GPS, las teselas de mapa ni servicios externos en el celular.
 
 Fuentes: TanStack Start hosting https://tanstack.com/start/latest/docs/framework/react/guide/hosting; Vercel y TanStack Start https://vercel.com/kb/guide/deploy-a-tanstack-start-app-to-vercel; configuración https://vercel.com/docs/project-configuration/vercel-json; Git y previews https://vercel.com/docs/git.
+
+
+## Actualización de la vista previa
+
+Con el repositorio conectado, un nuevo commit en codex/mejoras-recomendador-geolocalizacion debe generar un despliegue Preview. Comprueba que Vercel indique Preview antes de compartir la URL. No promociones la vista previa a Production.
